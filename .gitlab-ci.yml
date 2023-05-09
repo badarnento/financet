@@ -1,0 +1,50 @@
+image:
+  name: harbor.linkaja.com/devops/ansible:2.9.24-aac6df74
+  entrypoint: [""]
+variables:
+  GIT_CLEAN_FLAGS: ""
+  PHP_VERSION: "7.2"
+  ARTIFACT_PATH: "artifacts/${CI_PROJECT_NAME}.tar.gz"
+  HOME_APP: "/var/www"
+  FRAMEWORK: "codeigniter"
+  CONFIG_PATH: ".env"
+  IGNORE_DIR: "$HOME_APP/$CI_PROJECT_NAME/application/logs\n
+               $HOME_APP/$CI_PROJECT_NAME/uploads"
+
+stages:
+  - check
+  - build
+  # - test
+  # - review
+  # - dast
+  - development
+  - staging
+  - production
+  # - performance
+  - alert
+
+  ## THIS IS BUILD BLOCK ##
+  #########################
+build:
+  stage: build
+  before_script:
+    - echo "machine gitlab.linkaja.com login gitlab-ci-token password $(CI_JOB_TOKEN)" > ~/.netrc
+  script:
+    - mkdir -p $CI_PROJECT_DIR/artifacts
+    - >
+      tar -czvf ${ARTIFACT_PATH}
+      --exclude=artifacts --exclude=.git --exclude=.gitignore
+      --exclude=.gitlab-ci.yml --exclude=*.sql --exclude=*.env
+      --exclude=.DS_Store --exclude=*.md . && echo "File backup OK" || echo "File backup failed"
+  artifacts:
+    paths:
+      - ${ARTIFACT_PATH}
+  only:
+    refs:
+      - development
+      - /(([a-zA-Z0-99]+)(\W)?([a-zA-Z0-99]+))-v([0-9]|[1-9][0-9]|[1-9][0-9][0-9]).([0-9]|[1-9][0-9]|[1-9][0-9][0-9]).([0-9]|[1-9][0-9]|[1-9][0-9][0-9])/
+
+include:
+  - project: "automation/depstra"
+    ref: depstra-v1.0.0
+    file: "cd-gitlab-ci.yml"
